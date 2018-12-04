@@ -1,67 +1,73 @@
 const express = require('express');
 const mysql = require('mysql');
+var bodyParser = require('body-parser');
 var path = require('path');
 var app = express();
-
-app.use(express.static(path.join(__dirname, './node')));
+var dbResult = "";
+app.use(express.static("public"));
 
 app.get('/', function(req, res) {
-   res.sendfile('index.html');
+    res.sendfile('public/index.html');
 });
 
 var db= mysql.createConnection({
     host: "localhost",
-    user: "charles",
-    password: "password",
-    database: "twitterDB"
+    port: "3306",
+    user: "root",
+    password: "g910f718",
+    db : "twitter"
 });
 db.connect((err) => {
+    if(err){
+        console.log(err);
+    }
     console.log('MySql Connected...');
 });
 
-app.get('/createdb', (req, res) => {
-    let sql = 'CREATE DATABASE twitterDB';
-    db.query(sql, (err, result) => {
-        console.log(result);
-        res.send('Database created...');
+var jsonParser = bodyParser.json();
+
+
+var urlencodeParser = bodyParser.urlencoded({extended: false});
+
+//calling showData function
+app.get('/getTweet', (req,res) =>{
+    let sql = "SELECT * FROM post.tweet;";
+    let query = db.query(sql, (err, result) =>{
+        if(err){
+            console.log(err);
+        }
+        res.setHeader('Content-Type','application/json');
+        res.send(JSON.stringify(result));
+    });
+
+});
+
+//update like for database
+app.post('/updatepost/:id', urlencodeParser, (req, res) => {
+    var id = req.params.id;
+    id = id.replace(':',"");
+    let sql = "SELECT * FROM post.tweet WHERE idtweet ="+id+";";
+    let get_like;
+    let query = db.query(sql, (err, result) =>{
+        if(err){
+            console.log(err);
+        }
+        get_like = result[0].like;
+        if(get_like==0){
+            get_like =1;
+        }else{
+            get_like=0;
+        }
+        let updateLike = "UPDATE post.tweet SET post.tweet.like = "+get_like+" WHERE idtweet ="+id+";";
+        console.log(updateLike);
+        let queryLike = db.query(updateLike, (err, result) =>{
+            if(err){
+                console.log(err);
+            }
+        });
     });
 });
 
-app.get('/createpoststable', (req, res) => {
-    let sql = 'CREATE TABLE posts(id int AUTO_INCREMENT, text VARCHAR(255), like VARCHAR(5) , PRIMARY KEY(id))';
-    db.query(sql, (err, result) => {
-        //if(err) throw err;
-        console.log(result);
-        res.send('Posts table created...');
-    });
-});
-app.get('/first', (req, res) =>{
-    var first = {id: 1, text: "hello world", like:"false"};
-    var second = {id: 2, text: "hello world 2", like:"false"};
-    var third = {id: 3, text: "hello world 3", like:"false"};
-    var forth = {id: 4, text: "hello world 4", like:"false"};
-    res.send([first,second,third,forth]);
-})
-app.get('/addpost1', (req, res) => {
-    let post = {id:'1', text:'This is post number one',like:"false"};
-    let sql = 'INSERT INTO posts SET ?';
-    let query = db.query(sql, post, (err, result) => {
-        //if(err) throw err;
-        console.log(result);
-        res.send('Post 1 added...');
-    });
-});
-
-
-app.get('/updatepost/:id', (req, res) => {
-    let newTitle = 'Updated Title';
-    let sql = `UPDATE posts SET like = '${newlike}' WHERE id = ${req.params.id}`;
-    let query = db.query(sql, (err, result) => {
-        if(err) throw err;
-        console.log(result);
-        res.send('Post updated...');
-    });
-});
 
 
 app.listen('3000',() =>{
